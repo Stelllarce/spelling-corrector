@@ -46,9 +46,9 @@ jobs:
       - name: Generate Coverage Report
         run: |
           coverage run -m pytest tests/
-          coverage csv
+          coverage json --pretty-print
       - name: Upload Test Coverage
         uses: actions/upload-artifact@v3
         with:
-          name: coverage.csv
-          path: coverage.csv
+          name: coverage.json
+          path: coverage.json
