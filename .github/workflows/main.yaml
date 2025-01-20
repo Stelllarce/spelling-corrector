@@ -4,6 +4,9 @@ name: Main Branch  CI/CD Pipeline
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch: null
 jobs:
   lint:
@@ -41,3 +44,14 @@ jobs:
         run: pip install -r requirements.txt
       - name: Run Tests
         run: pytest tests/
+      - name: Install Coverage
+        run: pip install coverage
+      - name: Generate Coverage Report
+        run: |
+          coverage run -m pytest tests/
+          coverage xml
+      - name: Upload Test Coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage.xml
+          path: coverage.xml
