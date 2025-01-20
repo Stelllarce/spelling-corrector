@@ -1,5 +1,5 @@
 import pytest
-from src.correctors.peter_norvig import PeterNorvigCorrector
+from src.correctors.pn_corrector import PeterNorvigCorrector
 
 
 @pytest.fixture
