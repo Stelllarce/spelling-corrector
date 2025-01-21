@@ -17,7 +17,7 @@ class PeterNorvigCorrector:
         :param dataset_path: Path to the text file containing the training data
         :param max_distance: Maximum Damerau-Levenshtein distance to consider
         """
-        with open(dataset_path, 'r') as file:
+        with open(dataset_path, 'r', encoding='utf8') as file:
             text = file.read()
         self.words_dic: Counter = Counter(get_words(text))
         self.word_count: int = sum(self.words_dic.values())
