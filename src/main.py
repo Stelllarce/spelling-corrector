@@ -41,11 +41,19 @@ def process_text(text: str, corrector: PeterNorvigCorrector) -> str:
     words_with_punct = re.findall(r'\w+|[.,?!":;]', text)
     # Correct only words, preserve punctuation
     corrected_words = []
-    for word in tqdm(words_with_punct, desc="Processing text"):
+    for word in tqdm(
+        list(
+            filter(
+                lambda x: re.match(r'\w+', x), words_with_punct
+                )),
+            desc="Processing text"
+            ):
+
         if re.match(r'\w+', word):
             corrected_words.append(corrector.correct(word))
         else:
             corrected_words.append(word)
+
     corrected_text = ' '.join(corrected_words)
     # Clean up extra spaces before punctuation
     corrected_text = re.sub(r'\s+([.,?!":;])', r'\1', corrected_text)
