@@ -2,6 +2,7 @@ import time
 import re
 from correctors.pn_corrector import PeterNorvigCorrector
 from dataset.languages import alphabets
+from tqdm import tqdm
 
 
 def language_selector() -> str:
@@ -40,7 +41,7 @@ def process_text(text: str, corrector: PeterNorvigCorrector) -> str:
     words_with_punct = re.findall(r'\w+|[.,?!":;]', text)
     # Correct only words, preserve punctuation
     corrected_words = []
-    for word in words_with_punct:
+    for word in tqdm(words_with_punct, desc="Processing text"):
         if re.match(r'\w+', word):
             corrected_words.append(corrector.correct(word))
         else:
@@ -54,24 +55,33 @@ def process_text(text: str, corrector: PeterNorvigCorrector) -> str:
     print(f"Processing time: {(end_time - start_time):.4f} seconds\n")
     return corrected_text
 
-def main():
+
+def setup_corrector(depth: str) -> tuple[str, PeterNorvigCorrector]:
     while True:
         try:
-            depth = input("Enter the maximum edit distance: ")
             selected_language = language_selector()
             corrector = PeterNorvigCorrector(
                 f"src/dataset/{selected_language}.txt", int(depth)
-                )
-            break
+            )
+            return selected_language, corrector
         except FileNotFoundError:
             print("The dataset file was not found or is not yet added.")
         except ValueError:
             print("The maximum edit distance must be an integer.")
 
+
+def main():
+    depth = input("Enter the maximum edit distance: ")
+    selected_language, corrector = setup_corrector(depth)
+
     while True:
+        print("\nType '!change' to change language or enter your text:")
         text = get_text_input()
         if text is None:
             return
+        if text == "!change":
+            selected_language, corrector = setup_corrector(depth)
+            continue
         if not input_correlates_to_language(selected_language, text):
             print("The text does not match the selected language.")
             continue
