@@ -22,6 +22,7 @@ class PeterNorvigCorrector:
         self.words_dic: Counter = Counter(get_words(text))
         self.word_count: int = sum(self.words_dic.values())
         self.max_distance: int = max_distance
+        self._correction_cache: dict = {}
 
     def prob(self, word: str) -> float:
         """Return the probability of the word"""
@@ -29,7 +30,12 @@ class PeterNorvigCorrector:
 
     def correct(self, word: str) -> str:
         """Return the most probable spelling correction for the word"""
-        return max(self.candidates(word), key=self.prob)
+        if word in self._correction_cache:
+            return self._correction_cache[word]
+
+        correction = max(self.candidates(word), key=self.prob)
+        self._correction_cache[word] = correction
+        return correction
 
     def candidates(self, word: str) -> Set[str]:
         """Generate possible spelling corrections for the word"""
