@@ -4,6 +4,7 @@ name: Main Branch  CI/CD Pipeline
   push:
     branches:
       - main
+      - feature/**
   pull_request:
     branches:
       - main
