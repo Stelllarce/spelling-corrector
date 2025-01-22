@@ -6,7 +6,11 @@ The purpose of this project is to create a simple spelling corrector that can co
 
 ## Description
 
-This spelling corrector uses the standard approach of using edit distance algoritm, namely the Dameau-Levenshtein distance, to correct spelling mistakes. It also uses a language model to correct the mistakes. The language model is based on the probability of a word given the previous word. The language model is trained on a large corpus of text.
+### Dameau-Levenshtein distance
+This spelling corrector uses the standard approach of using edit distance algoritm, namely the Dameau-Levenshtein distance, to correct spelling mistakes. The algorithm builds a matrix **M** of the distances between the words and then finds the shortest path between the two words, by utilising dynamic programming. The desired shortest edit-distance should be in cell M[n -1][m -1].
+
+### Selection mechanism
+The selection mechanism is a simple one. The algorithm selects the word with the smallest edit distance from the misspelled word. If there are multiple words with the same edit distance, the algorithm selects the first one.
 
 ## Installation
 
@@ -35,3 +39,13 @@ Currently the algorithm used is a very simple one. The project will be expanded 
 - Add support for work with files
 
 - Add support for work with text from the internet (create a simple flask app)
+
+## References
+
+- https://norvig.com/spell-correct.html
+- https://people.cs.pitt.edu/~kirk/cs1501/Pruhs/Spring2006/assignments/editdistance/Levenshtein%20Distance.htm
+- https://www.geeksforgeeks.org/introduction-to-dynamic-programming-data-structures-and-algorithm-tutorials/
+- https://web.stanford.edu/%7Ejurafsky/slp3/2.pdf
+- bg data: https://chitanka.info/text/3753, https://github.com/miglen/bulgarian-wordlists/blob/master/wordlists/bg-words-validated-cyrillic.txt
+- en data: https://norvig.com/big.txt
+- de data:  https://github.com/lorenbrichter/Words/tree/master/Words, https://archive.org/stream/in.ernet.dli.2015.168305/2015.168305.Im-Westen-Nichts-Neues_djvu.txt
