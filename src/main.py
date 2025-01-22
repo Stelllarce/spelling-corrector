@@ -96,8 +96,8 @@ def process_file(file_path: str, corrector: PeterNorvigCorrector) -> None:
         future = executor.submit(do_correction)
         corrected_text = future.result()
 
-    new_file = f"{
-        file_path.rsplit('.', 1)[0]}_corrected.{file_path.rsplit('.', 1)[1]}"
+    name, ext = file_path.rsplit('.', 1)
+    new_file = f"{name}_corrected.{ext}"
     out_manager = FileManager(new_file)
     out_manager.write_file(corrected_text)
     print(f"Corrected file saved to {new_file}")
