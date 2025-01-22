@@ -72,6 +72,18 @@ Currently the algorithm used is a very simple one. The project will be expanded 
 
 - Add support for correcting conjoined words
 
+- Deep dive in grammar correction (unlikely)
+
+## Known issues
+
+- In en the algorithm substitutes I with A
+
+- Always corrects the first word in the sentence
+
+- Progress bar says its computing special symbols too (maybe a feature)
+
+- Need more special symbols and also put the regex for that in a separate file
+
 ## References
 
 - https://norvig.com/spell-correct.html
