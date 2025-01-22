@@ -1,16 +1,15 @@
 import time
 import re
+import concurrent.futures
+from file_manager import FileManager
 from correctors.pn_corrector import PeterNorvigCorrector
 from dataset.languages import alphabets
 from tqdm import tqdm
 
 
 def language_selector() -> str:
-    print("Select the language of the text:")
-    print("1. en")
-    print("2. bg")
-    print("3. de")
-    language = input("Enter the number of the language: ")
+    print("Select the language of the text: en, bg, de")
+    language = input("Enter language: ")
     return language
 
 
@@ -35,7 +34,9 @@ def input_correlates_to_language(language: str, text: str) -> bool:
     return True
 
 
-def process_text(text: str, corrector: PeterNorvigCorrector) -> str:
+def process_text(text: str,
+                 corrector: PeterNorvigCorrector,
+                 display_corrected: bool = True) -> str:
     start_time = time.time()
     # Split text preserving punctuation
     words_with_punct = re.findall(r'\w+|[.,?!":;]', text)
@@ -59,7 +60,8 @@ def process_text(text: str, corrector: PeterNorvigCorrector) -> str:
     corrected_text = re.sub(r'\s+([.,?!":;])', r'\1', corrected_text)
     end_time = time.time()
     print("\nOriginal text:", text)
-    print("Corrected text:", corrected_text)
+    if display_corrected:
+        print("Corrected text:", corrected_text)
     print(f"Processing time: {(end_time - start_time):.4f} seconds\n")
     return corrected_text
 
@@ -78,17 +80,46 @@ def setup_corrector(depth: str) -> tuple[str, PeterNorvigCorrector]:
             print("The maximum edit distance must be an integer.")
 
 
+def process_file(file_path: str, corrector: PeterNorvigCorrector) -> None:
+    manager = FileManager(file_path)
+    text = manager.read_file()
+
+    def do_correction():
+        lines = text.split('\n')
+        corrected_lines = [
+            process_text(line, corrector, display_corrected=False)
+            for line in lines
+        ]
+        return '\n'.join(corrected_lines)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future = executor.submit(do_correction)
+        corrected_text = future.result()
+
+    new_file = f"{
+        file_path.rsplit('.', 1)[0]}_corrected.{file_path.rsplit('.', 1)[1]}"
+    out_manager = FileManager(new_file)
+    out_manager.write_file(corrected_text)
+    print(f"Corrected file saved to {new_file}")
+
+
 def main():
     depth = input("Enter the maximum edit distance: ")
     selected_language, corrector = setup_corrector(depth)
 
     while True:
-        print("\nType '!change' to change language or enter your text:")
+        print(
+            "\nType '!change' to change language, "
+            "'!file' to correct a file, or enter your text:")
         text = get_text_input()
         if text is None:
             return
         if text == "!change":
             selected_language, corrector = setup_corrector(depth)
+            continue
+        if text.startswith("!file "):
+            file_name = text.split("!file ", 1)[1].strip()
+            process_file(file_name, corrector)
             continue
         if not input_correlates_to_language(selected_language, text):
             print("The text does not match the selected language.")
