@@ -9,6 +9,15 @@ def get_words(text: str) -> List[str]:
     return re.findall(r'\w+', text.lower())
 
 
+def preserve_case(original: str, corrected: str) -> str:
+    """Preserve the case style of the original word."""
+    if original.isupper():
+        return corrected.upper()
+    if original.istitle():
+        return corrected.capitalize()
+    return corrected.lower()
+
+
 class PeterNorvigCorrector:
     """Spelling corrector utilizing Peter Norvig's approach"""
     def __init__(self, dataset_path: str, max_distance: int = 2) -> None:
@@ -30,12 +39,13 @@ class PeterNorvigCorrector:
 
     def correct(self, word: str) -> str:
         """Return the most probable spelling correction for the word"""
-        if word in self._correction_cache:
-            return self._correction_cache[word]
+        lower_word = word.lower()
+        if lower_word in self._correction_cache:
+            return preserve_case(word, self._correction_cache[lower_word])
 
         correction = max(self.candidates(word), key=self.prob)
-        self._correction_cache[word] = correction
-        return correction
+        self._correction_cache[lower_word] = correction
+        return preserve_case(word, correction)
 
     def candidates(self, word: str) -> Set[str]:
         """Generate possible spelling corrections for the word"""
