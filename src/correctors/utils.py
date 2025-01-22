@@ -25,3 +25,19 @@ def damerau_levenstein(s1: str, s2: str) -> int:
                     s1[i] != s1[i - 1]):  # Ensure characters are different
                 d[(i, j)] = min(d[(i, j)], d[(i - 2, j - 2)] + 1)
     return d[lenstr1 - 1, lenstr2 - 1]
+
+
+def compare_correction(original: str, corrected: str, expected: str) -> int:
+    """Return what percentage of the
+    corrected text matches the expected text"""
+
+    original_words = original.split()
+    corrected_words = corrected.split()
+    expected_words = expected.split()
+
+    correct_count = 0
+    for i in range(len(original_words)):
+        if corrected_words[i] == expected_words[i]:
+            correct_count += 1
+
+    return correct_count / len(original_words) * 100
