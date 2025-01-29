@@ -7,7 +7,7 @@ The purpose of this project is to create a simple spelling corrector that can co
 ## Description
 
 ### Dameau-Levenshtein distance
-This spelling corrector uses the standard approach of using edit distance algoritm, namely the Dameau-Levenshtein distance, to correct spelling mistakes. The algorithm builds a matrix **M** of the distances between the words and then finds the shortest path between the two words, by utilising dynamic programming. The desired shortest edit-distance should be in cell M[n -1][m -1].
+This spelling corrector uses the standard approach of using edit distance algoritm, namely the **Dameau-Levenshtein** distance, to correct spelling mistakes. The algorithm builds a matrix `M` of the distances between the words and then finds the shortest path between the two words, by utilising dynamic programming. The desired shortest edit-distance should be in cell `M[n -1][m -1]`.
 
 ### Selection mechanism
 The selection mechanism is a simple one. The algorithm selects the word with the smallest edit distance from the misspelled word. If there are multiple words with the same edit distance, the algorithm selects the first one.
@@ -47,7 +47,7 @@ You will initially be prompted to enter the **max edit-distance** you want to se
 
 Whatever your input is, ***it will be processed after inputting two consecutive new lines after it***.
 
-<br> When entering a file to correct, the corrected file will be saved in the same directory as the original file with the name `corrected_<original_file_name>`
+When entering a file to correct, the corrected file will be saved in the same directory as the original file with the name `corrected_<original_file_name>`
 
 ### Disclaimer:
 Note that the program corrects the spelling of only single words, such as:
@@ -75,14 +75,11 @@ Currently the algorithm used is a very simple one. The project will be expanded 
 - Deep dive in grammar correction (unlikely)
 
 ## Known issues
-
-- In en the algorithm substitutes I with A
-
-- Always corrects the first word in the sentence
-
 - Progress bar says its computing special symbols too (maybe a feature)
 
 - Need more special symbols and also put the regex for that in a separate file
+
+- When reading from a file with language, different from the one selected, the program will be veeeery slow
 
 ## References
 
