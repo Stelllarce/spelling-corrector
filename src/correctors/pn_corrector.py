@@ -28,20 +28,27 @@ class PeterNorvigCorrector:
         """
         with open(dataset_path, 'r', encoding='utf8') as file:
             text = file.read()
-        self.words_dic: Counter = Counter(get_words(text))
-        self.word_count: int = sum(self.words_dic.values())
+        self.words_dict: Counter = Counter(get_words(text))
+        self.word_count: int = sum(self.words_dict.values())
         self.max_distance: int = max_distance
         self._correction_cache: dict = {}
 
     def prob(self, word: str) -> float:
         """Return the probability of the word"""
-        return self.words_dic[word] / self.word_count
+        return self.words_dict[word] / self.word_count
 
     def correct(self, word: str) -> str:
         """Return the most probable spelling correction for the word"""
+        # Words with less than 3 characters are not corrected, because
+        # without grammar model is nearly impossible to be accurate
+        if len(word) < 3:
+            return word
+
         lower_word = word.lower()
         if lower_word in self._correction_cache:
             return preserve_case(word, self._correction_cache[lower_word])
+        elif word in self.words_dict:
+            return word
 
         correction = max(self.candidates(word), key=self.prob)
         self._correction_cache[lower_word] = correction
@@ -53,7 +60,7 @@ class PeterNorvigCorrector:
         if candidates:
             return candidates
 
-        for distance in range(1, self.max_distance + 1):
+        for distance in range(0, self.max_distance + 1):
             candidates = self.get_words_at_distance(word, distance)
             if candidates:
                 return candidates
@@ -62,10 +69,18 @@ class PeterNorvigCorrector:
 
     def known(self, words: List[str]) -> Set[str]:
         """Return the subset of words that are actually in the dictionary"""
-        return set(w for w in words if w in self.words_dic)
+        return set(w for w in words if w in self.words_dict)
 
     def get_words_at_distance(self, word: str, distance: int) -> Set[str]:
         """Return all strings that have a
         specific Damerau-Levenshtein distance from word"""
-        return self.known(w for w in self.words_dic.keys()
+        return self.known(w for w in self.words_dict.keys()
                           if damerau_levenstein(word, w) == distance)
+
+    def display_candidates(self, word: str) -> None:
+        """Display the possible corrections
+        for the word with their edit distances"""
+        print(f"Possible corrections for '{word}':")
+        for candidate in self.candidates(word):
+            distance = damerau_levenstein(word.lower(), candidate.lower())
+            print(f"{candidate} (distance: {distance})")
