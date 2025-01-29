@@ -27,11 +27,8 @@ def get_text_input() -> str | None:
 
 def input_correlates_to_language(language: str, text: str) -> bool:
     # Remove punctuation before checking language
-    clean_text = re.sub(r'[\'\’.-,?!":;\s\d]', '', text)
-    for char in clean_text:
-        if char.lower() not in alphabets[language]:
-            return False
-    return True
+    clean_text = re.sub(r'[\'\’.\-,?!":;\s\d]', '', text)
+    return all(char.lower() in alphabets[language] for char in clean_text)
 
 
 def process_text(text: str,
@@ -39,24 +36,24 @@ def process_text(text: str,
                  display_corrected: bool = True) -> str:
     start_time = time.time()
     # Split text preserving punctuation
-    words_with_punct = re.findall(r'\w+|[\'\’.,?!":;-]', text)
+    words_with_punct = re.findall(r'\w+|[\'\’.\-,?!":;]', text)
     # Correct only words, preserve punctuation
     corrected_words = []
     for word in tqdm(words_with_punct, desc="Processing text"):
         if re.match(r'\w+', word):
             corrected_words.append(corrector.correct(word))
+            corrector.display_candidates(word)
         else:
             corrected_words.append(word)
 
     corrected_text = ' '.join(corrected_words)
     # Clean up extra spaces before punctuation
-    corrected_text = re.sub(r'\s+([\'\’.,?!":;-])', r'\1', corrected_text)
+    corrected_text = re.sub(r'\s+([\'\’.\-,?!":;])', r'\1', corrected_text)
     end_time = time.time()
-    print("\nOriginal text:", text)
     if display_corrected:
+        print("\nOriginal text:", text)
         print("Corrected text:", corrected_text)
-    print()
-    print(f"Processing time: {(end_time - start_time):.4f} seconds\n")
+    print(f"\nProcessing time: {(end_time - start_time):.4f} seconds\n")
     return corrected_text
 
 
