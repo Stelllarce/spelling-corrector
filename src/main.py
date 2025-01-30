@@ -2,31 +2,21 @@ import time
 import re
 import concurrent.futures
 import asyncio
-import threading
-import queue
 from file_manager import FileManager
 from correctors.pn_corrector import PeterNorvigCorrector
 from dataset.languages import alphabets
 from tqdm import tqdm
 
-# Thread-safe queue for progress updates
-progress_queue = queue.Queue()
-
-# Lock for controlling access to the console
-print_lock = threading.Lock()
-
-# Flag to suppress redundant tqdm progress bar
-tqdm_suppress = threading.local()
-tqdm_suppress.value = False
-
 
 def language_selector() -> str:
+    """Select the language of the text to be corrected."""
     print("Select the language of the text: en, bg, de")
     language = input("Enter language: ")
     return language
 
 
 def get_text_input() -> str | None:
+    """Get text input from the user."""
     print("Enter text (press Enter twice to process, or '!exit' to quit):")
     text = ""
     while True:
@@ -39,7 +29,7 @@ def get_text_input() -> str | None:
 
 
 def input_correlates_to_language(language: str, text: str) -> bool:
-    # Remove punctuation before checking language
+    """Check if the input text matches the selected language."""
     clean_text = re.sub(r'[\'\’.\-,?!\":;\s\d]', '', text)
     return all(char.lower() in alphabets[language] for char in clean_text)
 
@@ -47,23 +37,17 @@ def input_correlates_to_language(language: str, text: str) -> bool:
 def process_text(text: str,
                  corrector: PeterNorvigCorrector,
                  display_corrected: bool = True) -> str:
+    """Process the input text."""
     start_time = time.time()
     # Split text preserving punctuation
     words_with_punct = re.findall(r'\w+|[\'\’.\-,?!\":;\t\n]', text)
     # Correct only words, preserve punctuation
     corrected_words = []
-    if not getattr(tqdm_suppress, "value", False):
-        for word in tqdm(words_with_punct, desc="Processing text"):
-            if re.match(r'\w+', word):
-                corrected_words.append(corrector.correct(word))
-            else:
-                corrected_words.append(word)
-    else:
-        for word in words_with_punct:
-            if re.match(r'\w+', word):
-                corrected_words.append(corrector.correct(word))
-            else:
-                corrected_words.append(word)
+    for word in tqdm(words_with_punct, desc="Processing text"):
+        if re.match(r'\w+', word):
+            corrected_words.append(corrector.correct(word))
+        else:
+            corrected_words.append(word)
 
     corrected_text = ' '.join(corrected_words)
     # Clean up extra spaces before punctuation
@@ -77,6 +61,8 @@ def process_text(text: str,
 
 
 def setup_corrector(depth: str) -> tuple[str, PeterNorvigCorrector]:
+    """Setup the corrector with the selected
+        language and maximum edit distance."""
     while True:
         try:
             selected_language = language_selector()
@@ -90,73 +76,53 @@ def setup_corrector(depth: str) -> tuple[str, PeterNorvigCorrector]:
             print("The maximum edit distance must be an integer.")
 
 
-def process_file(file_path: str, corrector: PeterNorvigCorrector) -> None:
+async def process_file(file_path: str,
+                       corrector: PeterNorvigCorrector) -> None:
+    """Process the text from a file."""
+    start_time = time.time()
     manager = FileManager(file_path)
     text = manager.read_file()
 
-    def process_line(line: str, line_number: int):
-        tqdm_suppress.value = True
-        corrected_line = process_text(line, corrector, display_corrected=False)
-        progress_queue.put((line_number, corrected_line))
-        return line_number, corrected_line
+    def process_line(line: str) -> str:
+        return process_text(line, corrector, display_corrected=False)
 
     lines = text.split('\n')
-    corrected_lines = [None] * len(lines)
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {executor.submit(
-                process_line, line, i): i for i, line in enumerate(lines)}
-        for future in futures:
-            line_number, corrected_line = future.result()
-            corrected_lines[line_number] = corrected_line
+        futures = [executor.submit(process_line, line) for line in lines]
+        corrected_lines = [future.result() for future in futures]
 
     corrected_text = '\n'.join(corrected_lines)
     name, ext = file_path.rsplit('.', 1)
     new_file = f"{name}_corrected.{ext}"
     out_manager = FileManager(new_file)
     out_manager.write_file(corrected_text)
-
+    end_time = time.time()
+    print(f"\nTotal processing time: {(end_time - start_time):.4f} seconds")
     print(f"Corrected file saved to {new_file}")
-
-
-def display_progress():
-    while True:
-        line_number, message = progress_queue.get()
-        if message == "DONE":
-            break
-        with print_lock:
-            print(f"Line {line_number}: {message}")
 
 
 async def main():
     depth = input("Enter the maximum edit distance: ")
     selected_language, corrector = setup_corrector(depth)
 
-    # Progress display thread
-    display_thread = threading.Thread(target=display_progress, daemon=True)
-    display_thread.start()
-
     while True:
-        with print_lock:
-            print(
-                "\nType '!change' to change language, "
-                "'!file' to correct a file, or enter your text:")
+        print(
+            "\nType '!change' to change language, "
+            "'!file' to correct a file, or enter your text:")
         text = get_text_input()
         if text is None:
-            progress_queue.put((None, "DONE"))
-            display_thread.join()
             return
         if text == "!change":
             selected_language, corrector = setup_corrector(depth)
             continue
         if text.startswith("!file "):
             file_name = text.split("!file ", 1)[1].strip()
-            process_file(file_name, corrector)  # Removed await
+            await process_file(file_name, corrector)  # Removed await
             continue
         if not input_correlates_to_language(selected_language, text):
             print("The text does not match the selected language.")
             continue
         if text:
-            tqdm_suppress.value = False
             process_text(text, corrector)
 
 
