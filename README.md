@@ -1,8 +1,14 @@
-# Python Spelling Corrector Documentation
+# Spelling Corrector
 
 ## Purpose
 
 The purpose of this project is to create a simple spelling corrector that can correct spelling mistakes in a single word. This is a project that will be presented in the course "Systems Based On Knowledge" and "Programming With Python" at the University of Mathematics and Informatics in Sofia.
+
+## Structure
+
+The project is divided into two parts - a console application and a web application. The console application is a simple spelling corrector that can correct spelling mistakes in a single word. The web application is a more sophisticated version of the console application, which can correct spelling mistakes in a sentence.
+
+# Console Application Docs
 
 ## Description
 
@@ -28,13 +34,13 @@ pip install -r requirements.txt
 To use the project you need to run the following command from the root directory of the project:
 
 ```bash
-python3 src/main.py
+python3 src/app.py
 ```
 
 or
 
 ```bash
-python src/main.py
+python src/app.py
 ```
 
 ### Commands
@@ -90,3 +96,39 @@ Currently the algorithm used is a very simple one. The project will be expanded 
 - bg data: https://chitanka.info/text/3753, https://github.com/miglen/bulgarian-wordlists/blob/master/wordlists/bg-words-validated-cyrillic.txt
 - en data: https://norvig.com/big.txt
 - de data:  https://github.com/lorenbrichter/Words/tree/master/Words, https://archive.org/stream/in.ernet.dli.2015.168305/2015.168305.Im-Westen-Nichts-Neues_djvu.txt
+
+# Web Application Docs
+
+## Installation
+
+To install the project you need to have `Python 3.10.15` or higher installed on your machine. You can install the project by running the following command from the root directory:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+**The program is a web application, so you will need a browser to run it.**
+
+The following command runs the web app:
+
+```bash
+python3 web/app.py
+```
+
+The following command runs the api:
+
+```bash
+python3 api/app.py
+```
+
+WORK IN PROGRESS
+
+## Future work
+
+- Fix auto correct toggle
+
+- Better visueals
+
+- Add support for more languages
+
