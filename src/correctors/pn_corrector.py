@@ -84,3 +84,8 @@ class PeterNorvigCorrector:
         for candidate in self.candidates(word):
             distance = damerau_levenstein(word.lower(), candidate.lower())
             print(f"{candidate} (distance: {distance})")
+
+    def get_suggestions(self, word: str) -> List[str]:
+        """Return a list of suggestions for the word"""
+        return sorted(self.words_dict.keys(),
+                      key=lambda w: damerau_levenstein(word, w))[:5]
