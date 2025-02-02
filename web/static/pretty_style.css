@@ -1,0 +1,138 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: #f8f9fa;
+    background-image: linear-gradient(135deg, #f0f0f0 25%, #ffffff 100%);
+    text-align: center;
+    padding: 40px;
+    color: #333;
+  }
+  
+
+  h1 {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    display: inline-block;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s;
+  }
+  
+  h1:hover {
+    transform: scale(1.05);
+  }
+  
+  h1::before {
+    content: "🌟 ";
+  }
+  
+  h1::after {
+    content: " ✨";
+  }
+  
+  .input-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  #wordInput {
+    width: 400px;
+    height: 60px;
+    padding: 10px;
+    font-size: 18px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  
+  #wordInput:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+  }
+  
+  #autoCorrectToggle {
+    height: 60px; /* Same height as the input */
+    padding: 0 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #e0e0e0;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    transition: background-color 0.3s, transform 0.3s;
+  }
+  
+  #autoCorrectToggle.active {
+    background-color: #4CAF50;
+    color: white;
+  }
+  
+  #autoCorrectToggle:hover {
+    transform: scale(1.05);
+  }
+  
+  #correctedOutput {
+    width: 400px;
+    height: 80px;
+    padding: 10px;
+    font-size: 18px;
+    border: 2px dashed #ddd;
+    border-radius: 10px;
+    background-color: #ffffff;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+  
+  #suggestions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .suggestion {
+    padding: 10px 15px;
+    background-color: #ffffff;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
+  }
+  
+  .suggestion:hover {
+    background-color: #d0e7ff;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  body,
+  h1,
+  .input-container,
+  #correctedOutput,
+  #suggestions {
+    animation: fadeIn 0.8s ease-out;
+  }
+  

@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spelling Corrector</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='pretty_style.css') }}">
     <script src="{{ url_for('static', filename='script.js') }}" defer></script>
 </head>
 <body>
     <h1>Spelling Corrector</h1>
-
-    <button id="autoCorrectToggle" onclick="toggleAutoCorrect()">Auto Correct: OFF</button>
-
-    <textarea id="wordInput" placeholder="Type a sentence..." rows="2"></textarea>
-
+    
+    <div class="input-container">
+        <textarea id="wordInput" placeholder="Type a sentence..." rows="2"></textarea>
+        <button id="autoCorrectToggle" onclick="toggleAutoCorrect()">Auto Correct: OFF</button>
+    </div>
+    
     <div id="suggestions"></div>
 
     <h2>Corrected Text:</h2>
