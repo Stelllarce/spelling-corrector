@@ -126,8 +126,6 @@ WORK IN PROGRESS
 
 ## Future work
 
-- Fix auto correct toggle
-
 - Better visueals
 
 - Add support for more languages

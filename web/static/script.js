@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
     inputBox.addEventListener("keydown", function (event) {
         if (event.key === " " && autoCorrectEnabled && lastSuggestions.length > 0) {
             event.preventDefault(); 
-            const topSuggestion = lastSuggestions[0];
+            const topSuggestion = lastSuggestions[2];
             replaceWord(topSuggestion);
             inputBox.value += " "; 
             clearSuggestions();
@@ -64,23 +64,29 @@ async function getSuggestions() {
     try {
         const response = await fetch(`http://localhost:5000/correct?word=${lastWord}`);
         const data = await response.json();
-        lastSuggestions = data.suggestions || [];
+        // Get the suggestions from the server
+        const suggestions = data.suggestions || [];
 
-        if (lastSuggestions.length === 0) {
+        if (suggestions.length === 0) {
             suggestionsDiv.innerHTML = "<p>No suggestions found.</p>";
+            lastSuggestions = [];
             return;
         }
 
+
+        let suggestionsCopy = [...suggestions];
         let arrangedSuggestions = [];
         let left = true;
-        while (lastSuggestions.length > 0) {
+        while (suggestionsCopy.length > 0) {
             if (left) {
-                arrangedSuggestions.unshift(lastSuggestions.shift());
+                arrangedSuggestions.unshift(suggestionsCopy.shift());
             } else {
-                arrangedSuggestions.push(lastSuggestions.shift());
+                arrangedSuggestions.push(suggestionsCopy.shift());
             }
             left = !left;
         }
+
+        lastSuggestions = arrangedSuggestions;
 
         suggestionsDiv.innerHTML = arrangedSuggestions.map(word =>
             `<span class="suggestion" onclick="replaceWord('${word}')">${word}</span>`
