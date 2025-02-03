@@ -3,7 +3,7 @@ import pytest
 from io import StringIO
 import sys
 from difflib import SequenceMatcher
-from src.main import (
+from src.app import (
     process_text,
     input_correlates_to_language,
     PeterNorvigCorrector,

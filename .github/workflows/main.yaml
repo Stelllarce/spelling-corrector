@@ -52,7 +52,7 @@ jobs:
           coverage run -m pytest tests/
           coverage xml
       - name: Upload Test Coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage.xml
           path: coverage.xml

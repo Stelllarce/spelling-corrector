@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spelling Corrector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='pretty_style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</head>
+<body>
+    <h1>Spelling Corrector</h1>
+    
+    <div class="input-container">
+        <textarea id="wordInput" placeholder="Type a sentence..." rows="2"></textarea>
+        <button id="autoCorrectToggle" onclick="toggleAutoCorrect()">Auto Correct: OFF</button>
+    </div>
+    
+    <div id="suggestions"></div>
+
+    <h2>Corrected Text:</h2>
+    <textarea id="correctedOutput" rows="3" readonly></textarea>
+</body>
+</html>
