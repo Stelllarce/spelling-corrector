@@ -19,7 +19,7 @@ def correct_word():
     if not word:
         return jsonify({"error": "No word provided"}), 400
 
-    suggestions = corrector.get_suggestions(word)
+    suggestions = corrector.candidates(word)
 
     return jsonify({"word": word, "suggestions": suggestions})
 

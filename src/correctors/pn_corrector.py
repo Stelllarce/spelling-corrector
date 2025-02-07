@@ -54,18 +54,22 @@ class PeterNorvigCorrector:
         self._correction_cache[lower_word] = correction
         return preserve_case(word, correction)
 
-    def candidates(self, word: str) -> Set[str]:
+    def candidates(self, word: str) -> List[str]:
         """Generate possible spelling corrections for the word"""
         candidates = self.known([word])
         if candidates:
-            return candidates
+            return sorted(candidates,
+                          key=lambda w: (self.prob(w), w),
+                          reverse=True)
 
-        for distance in range(0, self.max_distance + 1):
+        for distance in range(1, self.max_distance + 1):
             candidates = self.get_words_at_distance(word, distance)
             if candidates:
-                return candidates
+                return sorted(candidates,
+                              key=lambda w: (self.prob(w), w),
+                              reverse=True)[:5]
 
-        return {word}
+        return [word]
 
     def known(self, words: List[str]) -> Set[str]:
         """Return the subset of words that are actually in the dictionary"""
@@ -76,16 +80,3 @@ class PeterNorvigCorrector:
         specific Damerau-Levenshtein distance from word"""
         return self.known(w for w in self.words_dict.keys()
                           if damerau_levenstein(word, w) == distance)
-
-    def display_candidates(self, word: str) -> None:
-        """Display the possible corrections
-        for the word with their edit distances"""
-        print(f"Possible corrections for '{word}':")
-        for candidate in self.candidates(word):
-            distance = damerau_levenstein(word.lower(), candidate.lower())
-            print(f"{candidate} (distance: {distance})")
-
-    def get_suggestions(self, word: str) -> List[str]:
-        """Return a list of suggestions for the word"""
-        return sorted(self.words_dict.keys(),
-                      key=lambda w: damerau_levenstein(word, w))[:5]
