@@ -2,6 +2,20 @@ from typing import List, Set
 import re
 from collections import Counter
 from .utils import damerau_levenstein
+from typing import Generator
+
+
+def read_line_by_line_buffered(
+    file_path: str,
+    buffer_size: int = 1024 * 1024
+) -> Generator[str, None, None]:
+    with open(file_path, 'r', encoding='utf8') as file:
+        while True:
+            lines = file.readlines(buffer_size)
+            if not lines:
+                break
+            for line in lines:
+                yield line.strip()
 
 
 def get_words(text: str) -> List[str]:
@@ -26,9 +40,16 @@ class PeterNorvigCorrector:
         :param dataset_path: Path to the text file containing the training data
         :param max_distance: Maximum Damerau-Levenshtein distance to consider
         """
-        with open(dataset_path, 'r', encoding='utf8') as file:
-            text = file.read()
-        self.words_dict: Counter = Counter(get_words(text))
+
+        self.words_dict: Counter = Counter(
+            get_words(
+                '\n'.join(
+                    list(
+                        read_line_by_line_buffered(dataset_path)
+                        )
+                    )
+                )
+            )
         self.word_count: int = sum(self.words_dict.values())
         self.max_distance: int = max_distance
         self._correction_cache: dict = {}
@@ -56,27 +77,27 @@ class PeterNorvigCorrector:
 
     def candidates(self, word: str) -> List[str]:
         """Generate possible spelling corrections for the word"""
-        candidates = self.known([word])
+        candidates = self.__known([word])
         if candidates:
             return sorted(candidates,
                           key=lambda w: (self.prob(w), w),
                           reverse=True)
 
         for distance in range(1, self.max_distance + 1):
-            candidates = self.get_words_at_distance(word, distance)
+            candidates = self.__get_words_at_distance(word, distance)
             if candidates:
                 return sorted(candidates,
                               key=lambda w: (self.prob(w), w),
-                              reverse=True)[:5]
+                              reverse=True)
 
         return [word]
 
-    def known(self, words: List[str]) -> Set[str]:
+    def __known(self, words: List[str]) -> Set[str]:
         """Return the subset of words that are actually in the dictionary"""
         return set(w for w in words if w in self.words_dict)
 
-    def get_words_at_distance(self, word: str, distance: int) -> Set[str]:
+    def __get_words_at_distance(self, word: str, distance: int) -> Set[str]:
         """Return all strings that have a
         specific Damerau-Levenshtein distance from word"""
-        return self.known(w for w in self.words_dict.keys()
-                          if damerau_levenstein(word, w) == distance)
+        return self.__known(w for w in self.words_dict.keys()
+                            if damerau_levenstein(word, w) == distance)
