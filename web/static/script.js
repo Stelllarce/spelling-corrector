@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (event.key === " " && autoCorrectEnabled && lastSuggestions.length > 0) {
             event.preventDefault(); 
             // Use the top suggestion as the best candidate
-            const topSuggestion = lastSuggestions[0];  
+            const topSuggestion = lastSuggestions[2];  
             replaceWord(topSuggestion);
             // Ensure a space is appended if it isn’t already
             if (!inputBox.value.endsWith(" ")) {

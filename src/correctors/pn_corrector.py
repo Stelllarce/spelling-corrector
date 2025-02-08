@@ -34,7 +34,7 @@ def preserve_case(original: str, corrected: str) -> str:
 
 class PeterNorvigCorrector:
     """Spelling corrector utilizing Peter Norvig's approach"""
-    def __init__(self, dataset_path: str, max_distance: int = 2) -> None:
+    def __init__(self, dataset_path: str, max_distance: int = 3) -> None:
         """
         Initialize the corrector with a dataset file path
         :param dataset_path: Path to the text file containing the training data

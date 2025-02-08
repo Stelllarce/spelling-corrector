@@ -25,6 +25,7 @@ class SimpleLanguageDetector:
         :return: The detected language
         or None if the language is not recognized.
         """
+        word = word.lower()
         for lang, alphabet in self.alphabets.items():
             if all(char in alphabet for char in word):
                 return lang
