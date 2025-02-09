@@ -33,7 +33,7 @@ def correct_word():
     """
     API Endpoint: Returns spelling suggestions for a given word.
     Query parameters:
-      - word: the word to check (required)
+      - word: the word to check
     """
     word = request.args.get("word", "").strip()
     if not word:
@@ -53,6 +53,32 @@ def correct_word():
         "word": word,
         "suggestions": suggestions
     })
+
+
+@app.route("/update", methods=["POST"])
+def update_correction():
+    """
+    API Endpoint: Updates the cache with the correction confirmed by the user.
+    Expects a JSON body with:
+      - word: the word typed by the user
+      - correction: the user-chosen correction
+    """
+    data = request.get_json()
+    if not data or "word" not in data or "correction" not in data:
+        return jsonify({"error": "Missing word or correction."}), 400
+
+    word = data["word"].strip()
+    correction = data["correction"].strip()
+    if not word or not correction:
+        return jsonify({"error": "No word or correction."}), 400
+
+    lang = detector.detect(word)
+    if lang is None or lang not in SUPPORTED_LANGUAGES:
+        return jsonify({"error": "Language not recognized."}), 400
+
+    corrector = get_corrector_for_lang(lang)
+    corrector.update_cache(word, correction)
+    return jsonify({"message": "Cache updated."})
 
 
 if __name__ == "__main__":
