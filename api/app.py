@@ -1,14 +1,26 @@
-from flask import Flask, request, jsonify
-from src.correctors.pn_corrector import PeterNorvigCorrector
-from flask_cors import CORS
 import os
-from src.dataset.language_detector import SimpleLanguageDetector
 from typing import Optional
 
-detector = SimpleLanguageDetector()
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import uvicorn
 
-app = Flask(__name__)
-CORS(app)
+from src.correctors.pn_corrector import PeterNorvigCorrector
+from src.dataset.language_detector import SimpleLanguageDetector
+
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+detector = SimpleLanguageDetector()
 
 SUPPORTED_LANGUAGES = {
     "en": os.path.join("src", "dataset", "en.txt"),
@@ -26,62 +38,62 @@ def get_corrector_for_lang(lang: str) -> Optional[PeterNorvigCorrector]:
         return None
     if lang not in correctors:
         dataset_path = SUPPORTED_LANGUAGES[lang]
-        correctors[lang] = PeterNorvigCorrector(dataset_path)
+        correctors[lang] = PeterNorvigCorrector(dataset_path, max_distance=3)
     return correctors[lang]
 
 
-@app.route("/correct", methods=["GET"])
-def correct_word():
+@app.get("/correct")
+async def correct_word(
+    word: str = Query(..., description="The word to check")
+) -> dict:
     """
     API Endpoint: Returns spelling suggestions for a given word.
     Query parameters:
-      - word: the word to check
+      - word: the word to check.
     """
-    word = request.args.get("word", "").strip()
+    word = word.strip()
     if not word:
-        return jsonify({"error": "No word provided"}), 400
-
-    # This line is here if I ever implement a grammar model
-    # sample_text = request.args.get("text", "").strip() or word
-
+        raise HTTPException(status_code=400, detail="No word provided")
     lang = detector.detect(word)
     if lang is None or lang not in SUPPORTED_LANGUAGES:
-        return jsonify({"error": "Language not recognized"}), 400
-
+        raise HTTPException(
+            status_code=400, detail="Language not recognized"
+        )
     corrector = get_corrector_for_lang(lang)
     suggestions = corrector.candidates(word)[:5]
     print(f"Word: {word}, Language: {lang}, Suggestions: {suggestions}")
-    return jsonify({
-        "word": word,
-        "suggestions": suggestions
-    })
+    return {"word": word, "suggestions": suggestions}
 
 
-@app.route("/update", methods=["POST"])
-def update_correction():
+class UpdateRequest(BaseModel):
+    word: str
+    correction: str
+
+
+@app.post("/update")
+async def update_correction(data: UpdateRequest) -> dict:
     """
-    API Endpoint: Updates the cache with the correction confirmed by the user.
+    API Endpoint: Updates the cache with the correction confirmed by the
+    user.
     Expects a JSON body with:
-      - word: the word typed by the user
-      - correction: the user-chosen correction
+      - word: the word typed by the user.
+      - correction: the user-chosen correction.
     """
-    data = request.get_json()
-    if not data or "word" not in data or "correction" not in data:
-        return jsonify({"error": "Missing word or correction."}), 400
-
-    word = data["word"].strip()
-    correction = data["correction"].strip()
+    word = data.word.strip()
+    correction = data.correction.strip()
     if not word or not correction:
-        return jsonify({"error": "No word or correction."}), 400
-
+        raise HTTPException(
+            status_code=400, detail="No word or correction provided"
+        )
     lang = detector.detect(word)
     if lang is None or lang not in SUPPORTED_LANGUAGES:
-        return jsonify({"error": "Language not recognized."}), 400
-
+        raise HTTPException(
+            status_code=400, detail="Language not recognized"
+        )
     corrector = get_corrector_for_lang(lang)
     corrector.update_cache(word, correction)
-    return jsonify({"message": "Cache updated."})
+    return {"message": "Cache updated."}
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True)
