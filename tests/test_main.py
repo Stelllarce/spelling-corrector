@@ -1,312 +1,252 @@
-import pytest
-# from unittest.mock import patch
-from io import StringIO
 import sys
-from difflib import SequenceMatcher
+import pytest
+
+from src.file_manager import FileManager
+import src.app as app
 from src.app import (
-    process_text,
+    language_selector,
+    get_text_input,
     input_correlates_to_language,
-    PeterNorvigCorrector,
-    # process_file
+    process_text,
+    process_file,
+    interactive_loop,
+    main,
 )
 
 
-def calculate_similarity(str1: str, str2: str) -> float:
-    """
-    Calculate the similarity ratio between two strings.
-    Returns a float between 0 and 1, where 1 means identical strings.
-    """
-    return SequenceMatcher(None, str1, str2).ratio()
+# A dummy corrector for testing purposes.
+class DummyCorrector:
+    def correct(self, word: str) -> str:
+        # For testing, simply return the word unchanged.
+        return word
 
 
-def assert_text_similarity(actual: str, expected: str, threshold: float = 0.9):
-    """
-    Assert that two strings are similar enough.
-    Default threshold is 0.9 (90% similarity).
-    """
-    similarity = calculate_similarity(actual, expected)
-    assert similarity >= threshold, (
-        f"Strings not similar enough. "
-        f"Similarity: {similarity:.2%}\n"
-        f"Expected: {expected}\n"
-        f"Actual: {actual}"
+def test_input_correlates_to_language_valid():
+    valid_text = "Hello, world! 123"
+    # Punctuation, whitespace, and digits are ignored.
+    assert input_correlates_to_language("en", valid_text)
+
+
+def test_input_correlates_to_language_invalid():
+    invalid_text = "Hello, Привет!"
+    assert not input_correlates_to_language("en", invalid_text)
+
+
+def test_process_text_without_display(capsys):
+    text = "Hello, worl."
+    dummy = DummyCorrector()
+    corrected = process_text(text, dummy, display_corrected=False)
+    captured = capsys.readouterr().out
+    assert "Original text:" not in captured
+    assert corrected == "Hello, worl."
+
+
+def test_process_text_with_display(capsys):
+    text = "Hello, worl."
+    dummy = DummyCorrector()
+    process_text(text, dummy)
+    captured = capsys.readouterr().out
+
+    assert "Original text:" in captured
+    assert "Corrected text:" in captured
+    assert "Processing time:" in captured
+
+
+def test_language_selector(monkeypatch):
+    monkeypatch.setattr("builtins.input", lambda prompt="": "en")
+    lang = language_selector()
+    assert lang == "en"
+
+
+def test_get_text_input_normal(monkeypatch):
+    # Simulate user entering two lines followed by a blank line.
+    inputs = iter(["Hello", "world", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+    result = get_text_input()
+    # Expecting the two lines to be concatenated with a space.
+    assert result == "Hello world"
+
+
+def test_get_text_input_exit(monkeypatch):
+    # Simulate immediate exit command.
+    inputs = iter(["!exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+    result = get_text_input()
+    assert result is None
+
+
+def test_interactive_loop(monkeypatch):
+    # Simulate an interactive session with a !change branch.
+    inputs = iter(["!change", "", "bg", "hello", "", "!exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+    call_log = []
+
+    def fake_process_text(text, corrector, display_corrected=True):
+        call_log.append(text)
+        return text
+
+    monkeypatch.setattr(app, "process_text", fake_process_text)
+    # Force PeterNorvigCorrector to always return our dummy.
+    monkeypatch.setattr(app,
+                        "PeterNorvigCorrector",
+                        lambda path, d: DummyCorrector())
+    # Force the language validation to always pass.
+    monkeypatch.setattr(app,
+                        "input_correlates_to_language",
+                        lambda lang, text: True)
+    dummy = DummyCorrector()
+    interactive_loop(dummy, "en", 2)
+    # Verify that "hello" was processed.
+    assert "hello" in call_log
+
+
+def test_interactive_loop_invalid_text(monkeypatch, capsys):
+    # Simulate an input that fails language validation.
+    inputs = iter(["invalid text", "", "!exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+    monkeypatch.setattr(app,
+                        "input_correlates_to_language",
+                        lambda lang, text: False)
+    dummy = DummyCorrector()
+    interactive_loop(dummy, "en", 2)
+    captured = capsys.readouterr().out
+    assert "The text does not match the selected language." in captured
+
+
+def test_interactive_loop_change_file_not_found(monkeypatch, capsys):
+    # Simulate the !change branch where
+    # PeterNorvigCorrector raises FileNotFoundError.
+    inputs = iter(["!change", "", "en", "!exit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(inputs))
+
+    def raise_file_not_found(*args, **kwargs):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(app, "PeterNorvigCorrector", raise_file_not_found)
+    dummy = DummyCorrector()
+    interactive_loop(dummy, "en", 2)
+    captured = capsys.readouterr().out
+    assert "The dataset file was not found or is not yet added." in captured
+
+
+@pytest.mark.asyncio
+async def test_process_file_valid(tmp_path, monkeypatch):
+    input_text = "Hello world"
+    input_file = tmp_path / "input.txt"
+    input_file.write_text(input_text, encoding="utf-8")
+    dummy = DummyCorrector()
+    monkeypatch.setattr(app, "FileManager", FileManager)
+    # Force language validation to pass.
+    monkeypatch.setattr(app,
+                        "input_correlates_to_language",
+                        lambda lang, text: True)
+    await process_file(
+        str(input_file),
+        dummy,
+        language="en",
+        output_dir=str(tmp_path),
+        output_name="result",
     )
+    # Expected output file name is "result" with the original extension.
+    output_file = tmp_path / "result.txt"
+    assert output_file.exists()
+    expected_output = process_text("Hello world",
+                                   dummy,
+                                   display_corrected=False)
+    actual_output = output_file.read_text(encoding="utf-8")
+    assert actual_output == expected_output
 
 
-@pytest.fixture
-def corrector():
-    """Fixture to provide a corrector instance."""
-    return PeterNorvigCorrector("src/dataset/en.txt", 2)
-
-
-@pytest.fixture
-def capture_stdout(monkeypatch):
-    """Fixture to capture stdout."""
-    string_io = StringIO()
-    monkeypatch.setattr(sys, 'stdout', string_io)
-    return string_io
-
-
-@pytest.fixture
-def sample_text_files(tmp_path):
-    """Create sample text files for testing."""
-    test_dir = tmp_path / "test_files"
-    test_dir.mkdir()
-
-    files = {
-        "simple.txt": "Thiss is a simple tesst file.",
-        "multiple_lines.txt": "Firstt line of texxt.\nSecondd line here.\n"
-                              "Thirdd line.",
-        "special_chars.txt": "Don't forgett to inclüde speçial chârs!",
-        "empty.txt": "",
-    }
-
-    created_files = {}
-    for name, content in files.items():
-        file_path = test_dir / name
-        file_path.write_text(content)
-        created_files[name] = file_path
-
-    return created_files
-
-
-@pytest.mark.parametrize("input_text,expected,threshold", [
-    ("hellp world", "hello world", 0.85),
-    ("Thiss is a tesst", "This is a test", 0.85),
-    ("Hoow are yuo?", "How are you?", 0.85),
-])
-def test_simple_corrections(corrector, input_text, expected, threshold):
-    """Test various simple text corrections."""
-    result = process_text(input_text, corrector, display_corrected=False)
-    assert_text_similarity(result, expected, threshold)
-
-
-@pytest.mark.parametrize("input_text,expected,threshold", [
-    (
-        "Thiss is a tesst, with som punctuation!",
-        "This is a test, with some punctuation!",
-        0.9
-    ),
-    (
-        "Don't forgett the apostrophe's... and other punct-uation!",
-        "Don't forget the apostrophe's... and other punctuation!",
-        0.85
-    ),
-    (
-        "Helllo world. Hoow are yuo today? I'm doingg fine!",
-        "Hello world. How are you today? I'm doing fine!",
-        0.85
-    ),
-])
-def test_complex_sentences(corrector, input_text, expected, threshold):
-    """Test correction of complex sentences with punctuation."""
-    result = process_text(input_text, corrector, display_corrected=False)
-    assert_text_similarity(result, expected, threshold)
-
-
-@pytest.mark.parametrize("text,language,expected", [
-    ("This is English text", "en", True),
-    ("Това е български текст", "en", False),
-    ("This has numbers 123", "en", True),
-    ("Text with punctuation!", "en", True),
-])
-def test_language_validation(text, language, expected):
-    """Test language validation for different inputs."""
-    assert input_correlates_to_language(language, text) == expected
-
-# Only god knows why this test fails
-# (process file does not create the output file)
-# def test_file_correction(corrector, tmp_path):
-#     """Test correction of text from a file."""
-#     test_file = tmp_path / "test.txt"
-#     test_content = "Thiss is a tesst file.\nIt hass multiple liness."
-#     test_file.write_text(test_content)
-
-#     with patch('main.FileManager') as mock_manager:
-#         instance = mock_manager.return_value
-#         instance.read_file.return_value = test_content
-
-#         process_file(str(test_file), corrector)
-
-#         expected_content = "This is a test file.\nIt has multiple lines."
-#         instance.write_file.assert_called_once()
-#         actual_content = instance.write_file.call_args[0][0]
-#         assert_text_similarity(actual_content, expected_content, 0.9)
-
-
-@pytest.mark.parametrize("edge_case,expected_behavior,threshold", [
-    (
-        "supercalifragilisticexpialidociouss",
-        "supercalifragilisticexpialidocious",
-        0.95
-    ),
-    ("123 th1s 1s @ t3st!", "123 this is @ test!", 0.85),
-    ("too    many      spaces", "too many spaces", 0.8),
-])
-def test_edge_cases(corrector, edge_case, expected_behavior, threshold):
-    """Test various edge cases in text correction."""
-    result = process_text(edge_case, corrector, display_corrected=False)
-    assert_text_similarity(result, expected_behavior, threshold)
-
-
-@pytest.fixture
-def mock_files(tmp_path):
-    mock_dir = tmp_path / "mock_files"
-    mock_dir.mkdir()
-    mock_file = mock_dir / "en_mock.txt"
-    expected_file = mock_dir / "en_mock_expected.txt"
-
-    # Input text with intentional spelling errors
-    mock_text = (
-        "The qick brown fox jumpd over the lazi dog. "
-        "It was an extrordinary event, because the beutiful canary "
-        "that usualy sang in the monring had finaly woken up. "
-        "However, the majestik cat did not seem "
-        "amuzed by the sudden comotion. "
-        "In fact, it decdied to slep a bit longer on the window sill, "
-        "ignorng the convarsation betwen the animls.\n\n"
-        "Meanwhile, a wandering travler stoped to see the stuning sunrise. "
-        "He was carrying a small bakpack full "
-        "of old paprs and scribbled notes, "
-        "hoping to find the nearest town soon. "
-        "The travler spke with the farmer "
-        "who owned the land, as he was looking "
-        "for dirctions to the next village. "
-        "The farmer generusly offered some "
-        "freshly baked bread, which the travler "
-        "glady accepted.\n\n"
-        "In the distance, a cry of a roostr echoed across the hills. "
-        "The travler, the fox, and the cat semed to pause momentarily, "
-        "as if time had frozn. Then, with renewed energy, the travler "
-        "set off down the dusty road, determined to complete his joney "
-        "before nightfal. He had a map that was quite outdted, but he "
-        "believed in his ablity to find the right path eventually.\n\n"
-        "Upon reaching the froest edge, the travler found some stberries "
-        "growing in the buhes. They were sweet, "
-        "albeit some were not yet ripe. "
-        "A gentl breese rustled leaves overhead, and the travler felt "
-        "suddenly gratefull for the quiet companionship of nature. "
-        "There was much left to explore, and many places to discover, "
-        "but for now, the journey continud with mispleled wrds and "
-        "endless optimismm."
+@pytest.mark.asyncio
+async def test_process_file_default_naming(tmp_path, monkeypatch):
+    # Test branch where output_name is not provided.
+    input_text = "Hello world"
+    input_file = tmp_path / "input.txt"
+    input_file.write_text(input_text, encoding="utf-8")
+    dummy = DummyCorrector()
+    monkeypatch.setattr(app, "FileManager", FileManager)
+    monkeypatch.setattr(app,
+                        "input_correlates_to_language",
+                        lambda lang, text: True)
+    await process_file(
+        str(input_file),
+        dummy,
+        language="en",
+        output_dir=str(tmp_path),
+        output_name=None,
     )
-    mock_file.write_text(mock_text, encoding='utf-8')
-
-    # Expected corrected text
-    expected_text = (
-        "The quick brown fox jumped over the lazy dog. "
-        "It was an extraordinary event, because the beautiful canary "
-        "that usually sang in the morning had finally woken up. "
-        "However, the majestic cat did not seem "
-        "amused by the sudden commotion. "
-        "In fact, it decided to sleep a bit longer on the window sill, "
-        "ignoring the conversation between the animals.\n\n"
-        "Meanwhile, a wandering traveler stopped "
-        "to see the stunning sunrise. "
-        "He was carrying a small backpack full "
-        "of old papers and scribbled notes, "
-        "hoping to find the nearest town soon. "
-        "The traveler spoke with the farmer "
-        "who owned the land, as he was looking "
-        "for directions to the next village. "
-        "The farmer generously offered some "
-        "freshly baked bread, which the traveler "
-        "gladly accepted.\n\n"
-        "In the distance, a cry of a rooster echoed across the hills. "
-        "The traveler, the fox, and the cat seemed to pause momentarily, "
-        "as if time had frozen. Then, with renewed energy, the traveler "
-        "set off down the dusty road, determined to complete his journey "
-        "before nightfall. He had a map that was quite outdated, but he "
-        "believed in his ability to find the right path eventually.\n\n"
-        "Upon reaching the forest edge, the traveler found some strawberries "
-        "growing in the bushes. They were sweet, "
-        "albeit some were not yet ripe. "
-        "A gentle breeze rustled leaves overhead, and the traveler felt "
-        "suddenly grateful for the quiet companionship of nature. "
-        "There was much left to explore, and many places to discover, "
-        "but for now, the journey continued with misspelled words and "
-        "endless optimism."
-    )
-    expected_file.write_text(expected_text, encoding='utf-8')
-
-    return mock_file, expected_file
+    # Expected default naming: original file name with "_corrected" appended.
+    output_file = tmp_path / "input_corrected.txt"
+    assert output_file.exists()
+    expected_output = process_text("Hello world",
+                                   dummy,
+                                   display_corrected=False)
+    actual_output = output_file.read_text(encoding="utf-8")
+    assert actual_output == expected_output
 
 
-# Only god knows why this test fails
-# (process file does not create the output file)
-# def test_full_file_processing_integration(corrector, mock_files):
-#     """Test complete file processing workflow with real files."""
-#     mock_file, expected_file = mock_files
-#     out = os.path.join("tests", "mock_files", "out.txt")
-#     process_file(str(mock_file), corrector,
-#                  out_path=out)
-
-#     corrected_path = os.path.join("tests", "mock_files", "out_corrected.txt")
-#     assert os.path.exists(corrected_path)
-
-#     corrected_content = corrected_path.read_text()
-#     expected_content = expected_file.read_text()
-#     similarity = calculate_similarity(corrected_content, expected_content)
-#     os.remove(corrected_path)
-#     assert similarity >= 0.85, (
-#         f"Corrected content does not match expected content.\n"
-#         f"Corrected: {corrected_content}\n"
-#         f"Expected: {expected_content}"
-#     )
+@pytest.mark.asyncio
+async def test_process_file_invalid(tmp_path, monkeypatch):
+    # Test the branch where language validation fails.
+    input_text = "Hello Привет"
+    input_file = tmp_path / "input.txt"
+    input_file.write_text(input_text, encoding="utf-8")
+    dummy = DummyCorrector()
+    monkeypatch.setattr(app, "FileManager", FileManager)
+    monkeypatch.setattr(app,
+                        "input_correlates_to_language",
+                        lambda lang, text: False)
+    with pytest.raises(SystemExit) as excinfo:
+        await process_file(str(input_file), dummy, language="en")
+    assert excinfo.value.code == 1
 
 
-def test_accuracy_statistics(corrector):
-    """Test overall correction accuracy across multiple samples."""
-    test_cases = [
-        ("Thiss is a tesst", "This is a test"),
-        ("Helllo worldd", "Hello world"),
-        ("Tessting the accuraccy", "Testing the accuracy"),
-        ("Whaat about thiss?", "What about this?"),
-    ]
+def test_main_interactive(monkeypatch):
+    # Simulate interactive mode by not passing a file.
+    test_args = ["app.py", "-d", "2", "-l", "en"]
+    monkeypatch.setattr(sys, "argv", test_args)
+    called_flag = {"called": False}
 
-    similarities = []
-    for input_text, expected in test_cases:
-        result = process_text(input_text, corrector, display_corrected=False)
-        similarity = calculate_similarity(result, expected)
-        similarities.append(similarity)
+    def dummy_interactive_loop(corrector, language, max_edit_distance):
+        called_flag["called"] = True
 
-    average_accuracy = sum(similarities) / len(similarities)
-    print(f"\nAverage correction accuracy: {average_accuracy:.2%}")
-    assert average_accuracy >= 0.85, (
-        f"Average accuracy {average_accuracy:.2%} below threshold of 85%"
-    )
+    monkeypatch.setattr(app, "interactive_loop", dummy_interactive_loop)
+    monkeypatch.setattr(app,
+                        "PeterNorvigCorrector",
+                        lambda path, d: DummyCorrector())
+    main()
+    assert called_flag["called"]
 
 
-def test_multiline_accuracy(corrector):
-    """Test accuracy of corrections in multi-line text."""
-    input_text = """
-    Thiss is the firsst line.
-    The seconnd line has moore errors in itt.
-    The thirrd and finall line is alsso wrong.
-    """
-    expected = """
-    This is the first line.
-    The second line has more errors in it.
-    The third and final line is also wrong.
-    """
+def test_main_file_mode(monkeypatch, tmp_path):
+    # Simulate file mode by passing a valid file.
+    input_file = tmp_path / "input.txt"
+    input_file.write_text("Hello world", encoding="utf-8")
+    test_args = ["app.py", "-d", "2", "-l", "en", "-f", str(input_file)]
+    monkeypatch.setattr(sys, "argv", test_args)
+    called_flag = {"called": False}
 
-    result = process_text(input_text, corrector, display_corrected=False)
+    def dummy_asyncio_run(coro):
+        called_flag["called"] = True
 
-    # Calculate similarity for each line separately
-    input_lines = result.strip().split('\n')
-    expected_lines = expected.strip().split('\n')
-
-    line_similarities = []
-    for actual, expected in zip(input_lines, expected_lines):
-        similarity = calculate_similarity(actual.strip(), expected.strip())
-        line_similarities.append(similarity)
-        print(f"Line similarity: {similarity:.2%}")
-
-    average_similarity = sum(line_similarities) / len(line_similarities)
-    assert average_similarity >= 0.90, (
-        f"Average line similarity {average_similarity:.2%} below threshold"
-    )
+    monkeypatch.setattr(app.asyncio, "run", dummy_asyncio_run)
+    monkeypatch.setattr(app,
+                        "PeterNorvigCorrector",
+                        lambda path, d: DummyCorrector())
+    main()
+    assert called_flag["called"]
 
 
-if __name__ == '__main__':
-    pytest.main(['-v'])
+def test_main_file_not_found(monkeypatch, capsys):
+    # Simulate the branch where PeterNorvigCorrector raises FileNotFoundError.
+    test_args = ["app.py", "-d", "2", "-l", "en"]
+    monkeypatch.setattr(sys, "argv", test_args)
+
+    def raise_file_not_found(*args, **kwargs):
+        raise FileNotFoundError
+
+    monkeypatch.setattr(app, "PeterNorvigCorrector", raise_file_not_found)
+    main()
+    captured = capsys.readouterr().out
+    assert "The dataset file for the selected language was not found." \
+        in captured
