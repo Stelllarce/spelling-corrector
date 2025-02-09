@@ -13,11 +13,16 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     inputBox.addEventListener("keydown", function (event) {
+        // When space is pressed and auto-correct is enabled with available suggestions
         if (event.key === " " && autoCorrectEnabled && lastSuggestions.length > 0) {
             event.preventDefault(); 
-            const topSuggestion = lastSuggestions[2];
+            // Use the top suggestion as the best candidate
+            const topSuggestion = lastSuggestions[2] ? lastSuggestions[2] : lastSuggestions[0];
             replaceWord(topSuggestion);
-            inputBox.value += " "; 
+            // Ensure a space is appended if it isn’t already
+            if (!inputBox.value.endsWith(" ")) {
+                inputBox.value += " ";
+            }
             clearSuggestions();
         }
     });
@@ -46,18 +51,21 @@ async function getSuggestions() {
     const suggestionsDiv = document.getElementById("suggestions");
     let inputText = inputBox.value.trim();
 
+    // Show the loading spinner
+    suggestionsDiv.innerHTML = `<div class="spinner"></div>`;
+    lastSuggestions = []; 
+
     if (inputText === "") {
         suggestionsDiv.innerHTML = "";
-        lastSuggestions = []; 
         return;
     }
 
     let words = inputText.split(" ");
     let lastWord = words[words.length - 1];
 
+    // If the last word is empty (due to trailing space), clear suggestions.
     if (lastWord === "") {
         suggestionsDiv.innerHTML = "";
-        lastSuggestions = [];
         return;
     }
 
@@ -69,11 +77,10 @@ async function getSuggestions() {
 
         if (suggestions.length === 0) {
             suggestionsDiv.innerHTML = "<p>No suggestions found.</p>";
-            lastSuggestions = [];
             return;
         }
 
-
+        // Arrange suggestions (alternating order)
         let suggestionsCopy = [...suggestions];
         let arrangedSuggestions = [];
         let left = true;
@@ -94,28 +101,56 @@ async function getSuggestions() {
 
     } catch (error) {
         console.error("Error fetching suggestions:", error);
+        suggestionsDiv.innerHTML = "<p>Error loading suggestions.</p>";
+    }
+}
+
+async function updateCache(word, correction) {
+    try {
+        const response = await fetch("http://localhost:5000/update", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ word: word, correction: correction })
+        });
+        const data = await response.json();
+        console.log("Cache update response:", data);
+
+        getSuggestions();
+    } catch (error) {
+        console.error("Error updating cache:", error);
     }
 }
 
 function replaceWord(suggestion) {
     const inputBox = document.getElementById("wordInput");
+    // Split the text into words.
     let words = inputBox.value.split(" ");
+    
+    // If the last element is an empty string (trailing space), replace the word before it.
+    let indexToReplace = words.length - 1;
+    if (words[indexToReplace] === "" && words.length > 1) {
+        indexToReplace = words.length - 2;
+    }
+    if (indexToReplace < 0) return;
 
-    if (words.length === 0) return;
-
-    let lastWord = words[words.length - 1];
+    let targetWord = words[indexToReplace];
 
     let correctedWord;
-    if (lastWord === lastWord.toUpperCase()) {
+    if (targetWord === targetWord.toUpperCase()) {
         correctedWord = suggestion.toUpperCase();
-    } else if (lastWord.charAt(0).toUpperCase() === lastWord.charAt(0)) {
+    } else if (targetWord.charAt(0) === targetWord.charAt(0).toUpperCase()) {
         correctedWord = suggestion.charAt(0).toUpperCase() + suggestion.slice(1);
     } else {
         correctedWord = suggestion.toLowerCase();
     }
 
-    words[words.length - 1] = correctedWord; 
-    inputBox.value = words.join(" "); 
+    words[indexToReplace] = correctedWord; 
+    // Reassemble the words with a space separator.
+    inputBox.value = words.join(" ");
+
+    updateCache(targetWord, suggestion);
 }
 
 function clearSuggestions() {
