@@ -2,9 +2,9 @@ import time
 import re
 import concurrent.futures
 import asyncio
-from file_manager import FileManager
-from correctors.pn_corrector import PeterNorvigCorrector
-from dataset.languages import alphabets
+from .file_manager import FileManager
+from src.correctors.pn_corrector import PeterNorvigCorrector
+from src.dataset.languages import alphabets
 from tqdm import tqdm
 
 
