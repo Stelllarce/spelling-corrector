@@ -9,6 +9,7 @@ def read_line_by_line_buffered(
     file_path: str,
     buffer_size: int = 1024 * 1024
 ) -> Generator[str, None, None]:
+    """Read a file line by line with a buffer"""
     with open(file_path, 'r', encoding='utf8') as file:
         while True:
             lines = file.readlines(buffer_size)
@@ -53,6 +54,7 @@ class PeterNorvigCorrector:
         self.word_count: int = sum(self.words_dict.values())
         self.max_distance: int = max_distance
         self._correction_cache: dict = {}
+        self._candidates_cache: dict = {}
 
     def prob(self, word: str) -> float:
         """Return the probability of the word"""
@@ -76,20 +78,30 @@ class PeterNorvigCorrector:
         return preserve_case(word, correction)
 
     def candidates(self, word: str) -> List[str]:
-        """Generate possible spelling corrections for the word"""
+        """Generate possible spelling corrections for the word
+            and cache them for future use"""
+        lower_word = word.lower()
+        if lower_word in self._candidates_cache:
+            return self._candidates_cache[lower_word]
+
         candidates = self.__known([word])
         if candidates:
-            return sorted(candidates,
-                          key=lambda w: (self.prob(w), w),
-                          reverse=True)
+            result = sorted(candidates,
+                            key=lambda w: (self.prob(w), w),
+                            reverse=True)
+            self._candidates_cache[lower_word] = result
+            return result
 
         for distance in range(1, self.max_distance + 1):
             candidates = self.__get_words_at_distance(word, distance)
             if candidates:
-                return sorted(candidates,
-                              key=lambda w: (self.prob(w), w),
-                              reverse=True)
+                result = sorted(candidates,
+                                key=lambda w: (self.prob(w), w),
+                                reverse=True)
+                self._candidates_cache[lower_word] = result
+                return result
 
+        self._candidates_cache[lower_word] = [word]
         return [word]
 
     def __known(self, words: List[str]) -> Set[str]:
@@ -101,3 +113,21 @@ class PeterNorvigCorrector:
         specific Damerau-Levenshtein distance from word"""
         return self.__known(w for w in self.words_dict.keys()
                             if damerau_levenstein(word, w) == distance)
+
+    def update_cache(self, word: str, correction: str) -> None:
+        """
+        When the user confirms a correction,
+        update the caches so that the chosen
+        correction is now at the top of the candidate list.
+        """
+        lower_word = word.lower()
+        self._correction_cache[lower_word] = correction
+
+        if lower_word not in self._candidates_cache:
+            self._candidates_cache[lower_word] = [correction]
+        else:
+            candidates = self._candidates_cache[lower_word]
+            if correction in candidates:
+                candidates.remove(correction)
+            candidates.insert(0, correction)
+            self._candidates_cache[lower_word] = candidates
