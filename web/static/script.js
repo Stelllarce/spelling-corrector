@@ -1,5 +1,5 @@
 let typingTimer;
-const debounceDelay = 300; 
+const debounceDelay = 500; 
 let autoCorrectEnabled = false;
 let lastSuggestions = []; 
 
