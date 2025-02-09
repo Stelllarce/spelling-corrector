@@ -1,5 +1,7 @@
 def damerau_levenstein(s1: str, s2: str) -> int:
-    """Return the Damerau-Levenstein distance between two strings"""
+    """
+    Return the Damerau-Levenstein distance between two strings
+    """
     d = {}
     lenstr1 = len(s1)
     lenstr2 = len(s2)

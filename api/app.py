@@ -19,7 +19,9 @@ correctors = {}
 
 
 def get_corrector_for_lang(lang: str) -> Optional[PeterNorvigCorrector]:
-    """ Return a PeterNorvigCorrector instance for the given language. """
+    """
+    Return a PeterNorvigCorrector instance for the given language.
+    """
     if lang not in SUPPORTED_LANGUAGES:
         return None
     if lang not in correctors:
