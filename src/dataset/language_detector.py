@@ -1,5 +1,6 @@
 from typing import Optional
 from .languages import alphabets as preloaded_alphabets
+import re
 
 
 class SimpleLanguageDetector:
@@ -26,6 +27,8 @@ class SimpleLanguageDetector:
         or None if the language is not recognized.
         """
         word = word.lower()
+        # Remove punctuation, whitespace, and digits.
+        word = re.sub(r'[\'\’.\-,?!":;\s\d]', '', word)
         for lang, alphabet in self.alphabets.items():
             if all(char in alphabet for char in word):
                 return lang
