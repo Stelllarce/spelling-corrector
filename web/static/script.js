@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (event.key === " " && autoCorrectEnabled && lastSuggestions.length > 0) {
             event.preventDefault(); 
             // Use the top suggestion as the best candidate
-            const topSuggestion = lastSuggestions[2];  
+            const topSuggestion = lastSuggestions[2] ? lastSuggestions[2] : lastSuggestions[0];
             replaceWord(topSuggestion);
             // Ensure a space is appended if it isn’t already
             if (!inputBox.value.endsWith(" ")) {
@@ -105,6 +105,24 @@ async function getSuggestions() {
     }
 }
 
+async function updateCache(word, correction) {
+    try {
+        const response = await fetch("http://localhost:5000/update", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ word: word, correction: correction })
+        });
+        const data = await response.json();
+        console.log("Cache update response:", data);
+
+        getSuggestions();
+    } catch (error) {
+        console.error("Error updating cache:", error);
+    }
+}
+
 function replaceWord(suggestion) {
     const inputBox = document.getElementById("wordInput");
     // Split the text into words.
@@ -131,6 +149,8 @@ function replaceWord(suggestion) {
     words[indexToReplace] = correctedWord; 
     // Reassemble the words with a space separator.
     inputBox.value = words.join(" ");
+
+    updateCache(targetWord, suggestion);
 }
 
 function clearSuggestions() {
