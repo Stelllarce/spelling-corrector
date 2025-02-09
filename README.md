@@ -109,10 +109,16 @@ The following command runs the web app:
 python3 -m web.app
 ```
 
-The following command runs the api:
+The following command runs the uvicorn server:
 
 ```bash
 python3 -m api.app
+```
+
+or 
+
+```bash
+uvicorn api.app:app --reload
 ```
 
 The **website** opens on port `8000` by default and the **api** on port `5000`. The website can be accessed on all addresses like `http://127.0.0.1:8000`.
@@ -151,10 +157,11 @@ Currently the algorithm used is a very simple one. The project will be expanded 
 
 ## Used technologies
 
-- FlaskAPI
+- FastAPI and Uvicorn - API
 - HTML and CSS - website front-end
 - JavaScript - website event handling and handling queries to the API
-- Python - back-end
+- Flask - website back-end
+- Python - spelling corrector
 
 ## References
 
